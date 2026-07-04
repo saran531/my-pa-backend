@@ -52,7 +52,7 @@ const sendOtpEmail = async (to, otp, type = 'verify') => {
       <p style="color:#6b7280;font-size:13px;">If you didn't request this, ignore this email.</p>
     </div>
   `;
-  await transporter.verify();
+  //await transporter.verify();
   await transporter.sendMail({
     from: `"MY PA" <${process.env.REMINDER_FROM_EMAIL}>`,
     to,
@@ -97,7 +97,7 @@ const sendMeetingReminderEmail = async ({ to, userName, title, meetingTime, type
       <p style="color:#6b7280;font-size:13px;">— MY PA</p>
     </div>
   `;
-  await transporter.verify();
+  //await transporter.verify();
   await transporter.sendMail({
     from: `"MY PA" <${process.env.REMINDER_FROM_EMAIL}>`,
     to,
