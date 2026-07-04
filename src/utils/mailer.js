@@ -14,6 +14,15 @@ const transporter = nodemailer.createTransport({
   socketTimeout: 10000,
 });
 
+
+transporter.verify(function (error, success) {
+  if (error) {
+    console.error("SMTP Verify Error:", error);
+  } else {
+    console.log("SMTP Server is ready.");
+  }
+});
+
 /**
  * Send a 6-digit OTP email for verification or password reset.
  * @param {string} to  Recipient email
