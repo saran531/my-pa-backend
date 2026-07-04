@@ -10,7 +10,7 @@ const settingsRoutes = require('./routes/settings');
 const voiceRoutes = require('./routes/voice');
 
 const app = express();
-
+app.set('trust proxy', 1);
 // ─── CORS ────────────────────────────────────────────────────────────────────
 // Allow Flutter web (localhost), Android emulator (10.0.2.2), and any origin
 // in development. Tighten this in production.
