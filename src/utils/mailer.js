@@ -29,11 +29,13 @@ transporter.verify(function (error, success) {
 
 /**
  * Send a 6-digit OTP email for verification or password reset.
- * @param {string} to  Recipient email
- * @param {string} otp  6-digit code
- * @param {'verify'|'reset'} type
+ * @param {object} opts
+ * @param {string} opts.to       Recipient email
+ * @param {string} opts.otp      6-digit code
+ * @param {'verify'|'reset'} opts.type
+ * @param {string} [opts.userName]  User's full name (optional)
  */
-const sendOtpEmail = async (to, otp, type = 'verify') => {
+const sendOtpEmail = async ({ to, otp, type = 'verify', userName }) => {
   const subject =
     type === 'reset'
       ? 'MY PA — Password Reset OTP'
@@ -42,24 +44,61 @@ const sendOtpEmail = async (to, otp, type = 'verify') => {
   const heading =
     type === 'reset' ? 'Reset Your Password' : 'Verify Your Email Address';
 
-  const body = `
-    <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;border:1px solid #e5e7eb;border-radius:12px;">
-      <h2 style="color:#6366f1;">${heading}</h2>
-      <p>Use the OTP below. It expires in <strong>10 minutes</strong>.</p>
-      <div style="font-size:36px;font-weight:700;letter-spacing:12px;text-align:center;padding:24px;background:#f3f4f6;border-radius:8px;margin:24px 0;">
+  const greeting = userName ? `Hi <strong>${escapeHtml(userName)}</strong>,` : 'Hi there,';
+  const plainGreeting = userName ? `Hi ${userName},` : 'Hi there,';
+
+  const html = `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:480px;margin:auto;padding:32px;border:1px solid #e5e7eb;border-radius:12px;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <span style="font-size:28px;font-weight:800;color:#6366f1;">MY PA</span>
+      </div>
+      <h2 style="color:#1f2937;font-size:20px;margin:0 0 8px;">${heading}</h2>
+      <p style="color:#4b5563;font-size:15px;line-height:1.6;margin:0 0 20px;">
+        ${greeting}
+      </p>
+      <p style="color:#4b5563;font-size:15px;line-height:1.6;margin:0 0 16px;">
+        ${type === 'reset' ? 'We received a request to reset your password.' : 'Thank you for creating an account with MY PA.'}
+        Use the code below to complete this step. It expires in <strong>10 minutes</strong>.
+      </p>
+      <div style="font-size:36px;font-weight:700;letter-spacing:12px;text-align:center;padding:24px;background:#f3f4f6;border-radius:8px;margin:24px 0;color:#1f2937;">
         ${otp}
       </div>
-      <p style="color:#6b7280;font-size:13px;">If you didn't request this, ignore this email.</p>
+      <p style="color:#6b7280;font-size:13px;line-height:1.5;margin:0 0 4px;">If you didn't request this, you can safely ignore this email.</p>
+      <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;border-top:1px solid #e5e7eb;padding-top:16px;">
+        MY PA &mdash; Your Personal Assistant
+      </p>
     </div>
   `;
-  //await transporter.verify();
+
+  const text = `${heading}
+
+${plainGreeting}
+
+${type === 'reset' ? 'We received a request to reset your password.' : 'Thank you for creating an account with MY PA.'} Use the code below to complete this step. It expires in 10 minutes.
+
+${otp}
+
+If you didn't request this, you can safely ignore this email.
+
+---
+MY PA — Your Personal Assistant`;
+
   await transporter.sendMail({
     from: `"MY PA" <${process.env.REMINDER_FROM_EMAIL}>`,
     to,
     subject,
-    html: body,
+    html,
+    text,
   });
 };
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 /**
  * Send a meeting reminder email.

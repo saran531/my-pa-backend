@@ -147,7 +147,7 @@ exports.forgotPassword = async (req, res) => {
     user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
     await user.save({ validateBeforeSave: false });
 
-    await sendOtpEmail(email, otp, 'reset');
+    await sendOtpEmail({ to: email, otp, type: 'reset', userName: user.fullName });
 
     return res.json({ message: 'If that email exists, an OTP has been sent.' });
   } catch (err) {
