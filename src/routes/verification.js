@@ -5,16 +5,15 @@ const { sendOtp, verifyOtp } = require('../controllers/verificationController');
 const { validate } = require('../middleware/validate');
 const { protect } = require('../middleware/auth');
 
-// POST /api/verification/send-otp  (requires login)
+// POST /api/verification/send-otp  (no auth required — used for signup OTP resend + settings)
 router.post(
   '/send-otp',
-  protect,
   [body('email').isEmail().withMessage('Valid email required').normalizeEmail()],
   validate,
   sendOtp
 );
 
-// POST /api/verification/verify-otp  (requires login)
+// POST /api/verification/verify-otp  (requires login — for Settings verify email flow)
 router.post(
   '/verify-otp',
   protect,

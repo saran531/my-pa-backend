@@ -34,12 +34,22 @@ async function _sendIfNeeded(meeting, user, type) {
   const { pref, flag } = flagMap[type];
 
   // Skip if user disabled this type or email reminders globally
-  if (prefs.emailReminders === false) return;
-  if (prefs[pref] === false) return;
+  if (prefs.emailReminders === false) {
+    console.log(`[Reminder] Skipping ${type} for "${meeting.title}" → ${user.email}: emailReminders disabled`);
+    return;
+  }
+  if (prefs[pref] === false) {
+    console.log(`[Reminder] Skipping ${type} for "${meeting.title}" → ${user.email}: ${pref} disabled`);
+    return;
+  }
   // Skip if already sent
-  if (meeting[flag]) return;
+  if (meeting[flag]) {
+    console.log(`[Reminder] Skipping ${type} for "${meeting.title}" → ${user.email}: already sent (${flag})`);
+    return;
+  }
 
   try {
+    console.log(`[Reminder] Sending ${type} email to ${user.email} for "${meeting.title}"...`);
     await sendMeetingReminderEmail({
       to:          user.email,
       userName:    user.fullName,
@@ -47,12 +57,13 @@ async function _sendIfNeeded(meeting, user, type) {
       meetingTime: meeting.dateTime,
       type,
     });
+    console.log(`[Reminder] Email sent successfully for ${type} → ${user.email} for "${meeting.title}"`);
     await Meeting.findByIdAndUpdate(meeting._id, {
       [flag]: true,
       // Once any reminder is sent, mark the top-level flag too
       reminderSent: true,
     });
-    console.log(`[Reminder] ${type} → ${user.email} for "${meeting.title}"`);
+    console.log(`[Reminder] ${type} reminder flag set for meeting ${meeting._id}`);
   } catch (err) {
     console.error(`[Reminder] Failed to send ${type} for meeting ${meeting._id}:`, err.message);
   }
@@ -73,27 +84,38 @@ async function _tick() {
       dateTime: { $lte: soon, $gte: new Date(now.getTime() - 2 * 60 * 1000) },
     }).lean();
 
+    if (meetings.length > 0) {
+      console.log(`[Reminder] Tick: found ${meetings.length} meeting(s) to check (${now.toISOString()})`);
+    }
+
     for (const meeting of meetings) {
       const user = await User.findById(meeting.user).lean();
-      if (!user) continue;
+      if (!user) {
+        console.log(`[Reminder] Skipping meeting ${meeting._id}: user not found`);
+        continue;
+      }
 
       const msUntil = meeting.dateTime.getTime() - now.getTime();
+      console.log(`[Reminder] Meeting "${meeting.title}" at ${meeting.dateTime.toISOString()}, msUntil=${msUntil}`);
 
       // At-start: within ±1 minute of start time
       if (Math.abs(msUntil) <= 60 * 1000) {
+        console.log(`[Reminder] Dispatching atStart for "${meeting.title}" → ${user.email}`);
         await _sendIfNeeded(meeting, user, 'atStart');
       }
       // 15 min: between 14 and 16 minutes before
       if (msUntil >= 14 * 60 * 1000 && msUntil <= 16 * 60 * 1000) {
+        console.log(`[Reminder] Dispatching at15 for "${meeting.title}" → ${user.email}`);
         await _sendIfNeeded(meeting, user, 'at15');
       }
       // 30 min: between 29 and 31 minutes before
       if (msUntil >= 29 * 60 * 1000 && msUntil <= 31 * 60 * 1000) {
+        console.log(`[Reminder] Dispatching at30 for "${meeting.title}" → ${user.email}`);
         await _sendIfNeeded(meeting, user, 'at30');
       }
     }
   } catch (err) {
-    console.error('[Reminder] Tick error:', err.message);
+    console.error('[Reminder] Tick error:', err.message, err.stack);
   }
 }
 

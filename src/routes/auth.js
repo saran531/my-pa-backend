@@ -8,6 +8,7 @@ const {
   logout,
   forgotPassword,
   resetPassword,
+  verifySignupOtp,
 } = require('../controllers/authController');
 const { validate } = require('../middleware/validate');
 
@@ -34,6 +35,17 @@ router.post(
   ],
   validate,
   login
+);
+
+// POST /api/auth/verify-signup-otp (no auth required — for signup flow)
+router.post(
+  '/verify-signup-otp',
+  [
+    body('email').isEmail().withMessage('Valid email required').normalizeEmail(),
+    body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
+  ],
+  validate,
+  verifySignupOtp
 );
 
 // POST /api/auth/refresh

@@ -36,13 +36,26 @@ exports.signup = async (req, res) => {
     }
 
     const user = await User.create({ fullName, email, password });
-    const { accessToken, refreshToken } = await issueTokens(user);
 
+    // Generate and save OTP
+    const otp = generateOtp();
+    user.otp = otp;
+    user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save({ validateBeforeSave: false });
+
+    // Send OTP email — if it fails, undo the account creation
+    try {
+      await sendOtpEmail({ to: email, otp, type: 'verify', userName: fullName });
+    } catch (emailErr) {
+      await User.findByIdAndDelete(user._id);
+      console.error('signup email error:', emailErr);
+      return res.status(500).json({ message: 'Failed to send verification email. Please try again.' });
+    }
+
+    // Do NOT issue tokens — user must verify OTP first
     return res.status(201).json({
-      message: 'Account created successfully.',
-      accessToken,
-      refreshToken,
-      user: user.toPublicJSON(),
+      message: 'Account created. Please check your email for the verification code.',
+      email: email.toLowerCase(),
     });
   } catch (err) {
     console.error('signup error:', err);
@@ -109,6 +122,40 @@ exports.refresh = async (req, res) => {
     return res.json({ accessToken: newAccess, refreshToken: newRefresh });
   } catch (err) {
     console.error('refresh error:', err);
+    return res.status(500).json({ message: 'Server error. Please try again.' });
+  }
+};
+
+// ─── POST /auth/verify-signup-otp ────────────────────────────────────────────
+exports.verifySignupOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    const user = await User.findOne({ email: email.toLowerCase() }).select('+otp +otpExpiresAt');
+    if (!user || !user.otp || user.otp !== otp) {
+      return res.status(400).json({ message: 'Invalid OTP.' });
+    }
+    if (user.otpExpiresAt < new Date()) {
+      return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+    }
+
+    user.emailVerified = true;
+    user.otp = undefined;
+    user.otpExpiresAt = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    // Issue tokens now that the user is verified
+    const { accessToken, refreshToken } = await issueTokens(user);
+
+    return res.json({
+      verified: true,
+      message: 'Email verified successfully.',
+      accessToken,
+      refreshToken,
+      user: user.toPublicJSON(),
+    });
+  } catch (err) {
+    console.error('verifySignupOtp error:', err);
     return res.status(500).json({ message: 'Server error. Please try again.' });
   }
 };
