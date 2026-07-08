@@ -26,12 +26,11 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
+      // Mobile apps don't send an Origin header.
       if (!origin) return callback(null, true);
 
-      if (
-        origin.startsWith("http://localhost") ||
-        origin === "https://my-personal-assistance-1.onrender.com"
-      ) {
+      // Allow Flutter Web only during local development.
+      if (origin.startsWith("http://localhost")) {
         return callback(null, true);
       }
 
@@ -40,7 +39,6 @@ app.use(
     credentials: true,
   })
 );
-
 // ─── Body parsing ────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true }));
