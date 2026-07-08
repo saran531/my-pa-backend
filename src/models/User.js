@@ -46,6 +46,12 @@ const userSchema = new mongoose.Schema(
       type: Date,
       select: false,
     },
+    // Timestamp of the last OTP send, used to enforce a resend cooldown so a
+    // user (or an attacker) cannot spam-request OTPs for the same account.
+    otpLastSentAt: {
+      type: Date,
+      select: false,
+    },
     // Notification & reminder preferences
     notificationPrefs: {
       emailReminders: { type: Boolean, default: true },

@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Meeting = require('../models/Meeting');
 
 // ─── GET /api/meetings ───────────────────────────────────────────────────────
@@ -62,6 +63,10 @@ exports.createMeeting = async (req, res) => {
 
     return res.status(201).json({ meeting });
   } catch (err) {
+    // Handle MongoDB duplicate key error (race condition: two POSTs at the same time)
+    if (err.code === 11000) {
+      return res.status(409).json({ message: 'You already have a meeting scheduled at this time.' });
+    }
     console.error('createMeeting error:', err);
     return res.status(500).json({ message: 'Server error.' });
   }
@@ -70,6 +75,9 @@ exports.createMeeting = async (req, res) => {
 // ─── PATCH /api/meetings/:id ─────────────────────────────────────────────────
 exports.updateMeeting = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({ message: 'Meeting not found.' });
+    }
     const meeting = await Meeting.findOne({ _id: req.params.id, user: req.user._id });
     if (!meeting) {
       return res.status(404).json({ message: 'Meeting not found.' });
@@ -112,6 +120,9 @@ exports.updateMeeting = async (req, res) => {
 // ─── DELETE /api/meetings/:id ────────────────────────────────────────────────
 exports.deleteMeeting = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({ message: 'Meeting not found.' });
+    }
     const meeting = await Meeting.findOneAndDelete({ _id: req.params.id, user: req.user._id });
     if (!meeting) {
       return res.status(404).json({ message: 'Meeting not found.' });

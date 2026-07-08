@@ -46,7 +46,8 @@ const meetingSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Compound index: one user can't have two meetings at the exact same millisecond
-meetingSchema.index({ user: 1, dateTime: 1 });
+// Compound unique index: one user can't have two meetings at the exact same millisecond.
+// This prevents duplicate creation when two POST requests arrive simultaneously.
+meetingSchema.index({ user: 1, dateTime: 1 }, { unique: true });
 
 module.exports = mongoose.model('Meeting', meetingSchema);
